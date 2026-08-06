@@ -1,11 +1,10 @@
-# START
+import pandas as pd
 
-# Create Spark session
+df = pd.read_csv("data/data.csv")
 
-# Load dataset
-
-# Display the data
-
-# Stop Spark session
-
-# END
+print("Dataset Statistics")
+print("Total rows:", len(df))
+print("Sum:", df["value"].sum())
+print("Average:", df["value"].mean())
+print("Minimum:", df["value"].min())
+print("Maximum:", df["value"].max())
