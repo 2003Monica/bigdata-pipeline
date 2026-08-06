@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bigdata-analytics-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bigdata-analytics
+  template:
+    metadata:
+      labels:
+        app: bigdata-analytics
+    spec:
+      containers:
+        - name: bigdata-analytics-container
+          image: bigdata-analytics-app:1.0
+          imagePullPolicy: Never
+          
