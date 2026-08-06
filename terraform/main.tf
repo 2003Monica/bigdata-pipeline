@@ -144,3 +144,81 @@ resource "docker_container" "historyserver" {
 
   depends_on = [docker_container.resourcemanager]
 }
+resource "docker_image" "hive" {
+  name         = "bde2020/hive:2.3.2-postgresql-metastore"
+  keep_locally = true
+}
+
+resource "docker_image" "hive_postgres" {
+  name         = "bde2020/hive-metastore-postgresql:2.3.0"
+  keep_locally = true
+}
+
+resource "docker_container" "hive_postgres" {
+  name    = "hive-metastore-postgresql"
+  image   = docker_image.hive_postgres.image_id
+  restart = "unless-stopped"
+
+  networks_advanced {
+    name = docker_network.hadoop_network.name
+  }
+}
+
+resource "docker_container" "hive_metastore" {
+  name    = "hive-metastore"
+  image   = docker_image.hive.image_id
+  restart = "unless-stopped"
+
+  command = [
+    "/opt/hive/bin/hive",
+    "--service",
+    "metastore"
+  ]
+
+  env = concat(local.hadoop_environment, [
+    "SERVICE_PRECONDITION=namenode:9870 hive-metastore-postgresql:5432",
+    "HIVE_SITE_CONF_javax_jdo_option_ConnectionURL=jdbc:postgresql://hive-metastore-postgresql/metastore",
+    "HIVE_SITE_CONF_javax_jdo_option_ConnectionDriverName=org.postgresql.Driver",
+    "HIVE_SITE_CONF_javax_jdo_option_ConnectionUserName=hive",
+    "HIVE_SITE_CONF_javax_jdo_option_ConnectionPassword=hive"
+  ])
+
+  networks_advanced {
+    name = docker_network.hadoop_network.name
+  }
+
+  ports {
+    internal = 9083
+    external = 9083
+  }
+
+  depends_on = [
+    docker_container.namenode,
+    docker_container.hive_postgres
+  ]
+}
+
+resource "docker_container" "hive_server" {
+  name    = "hive-server"
+  image   = docker_image.hive.image_id
+  restart = "unless-stopped"
+
+  env = concat(local.hadoop_environment, [
+    "SERVICE_PRECONDITION=hive-metastore:9083",
+    "HIVE_SITE_CONF_javax_jdo_option_ConnectionURL=jdbc:postgresql://hive-metastore-postgresql/metastore",
+    "HIVE_SITE_CONF_javax_jdo_option_ConnectionDriverName=org.postgresql.Driver",
+    "HIVE_SITE_CONF_javax_jdo_option_ConnectionUserName=hive",
+    "HIVE_SITE_CONF_javax_jdo_option_ConnectionPassword=hive"
+  ])
+
+  networks_advanced {
+    name = docker_network.hadoop_network.name
+  }
+
+  ports {
+    internal = 10000
+    external = 10000
+  }
+
+  depends_on = [docker_container.hive_metastore]
+}
